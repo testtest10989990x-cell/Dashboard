@@ -1,0 +1,239 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Domain &amp; Mailbox Ops Dashboard</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.4/chart.umd.min.js"></script>
+<style>
+  :root{
+    --bg: #0E1420;
+    --panel: #141C2B;
+    --panel-border: #232E42;
+    --ink: #E7ECF5;
+    --muted: #8C9BB5;
+    --active: #3FBF7F;
+    --pending: #E8B84B;
+    --scheduled: #5C8DF6;
+    --cancelled: #E15C5C;
+    --other: #7C6CE0;
+    --accent: #3FBF7F;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0; background:var(--bg); color:var(--ink);
+    font-family:'Segoe UI', 'Inter', -apple-system, sans-serif;
+    padding:40px 5vw 80px;
+  }
+  h1{
+    font-size:28px; font-weight:600; margin:0 0 4px;
+    letter-spacing:-0.01em;
+  }
+  .subtitle{ color:var(--muted); font-size:14px; margin-bottom:32px; }
+  .kpi-row{
+    display:grid; grid-template-columns:repeat(auto-fit,minmax(170px,1fr));
+    gap:14px; margin-bottom:32px;
+  }
+  .kpi{
+    background:var(--panel); border:1px solid var(--panel-border);
+    border-radius:10px; padding:18px 20px;
+  }
+  .kpi .num{ font-size:30px; font-weight:700; font-variant-numeric:tabular-nums; }
+  .kpi .lbl{ color:var(--muted); font-size:13px; margin-top:4px; }
+  .kpi.active .num{ color:var(--active); }
+  .kpi.pending .num{ color:var(--pending); }
+  .kpi.scheduled .num{ color:var(--scheduled); }
+  .kpi.cancelled .num{ color:var(--cancelled); }
+
+  .section-title{
+    font-size:15px; font-weight:600; margin:36px 0 14px;
+    color:var(--ink); border-bottom:1px solid var(--panel-border);
+    padding-bottom:8px;
+  }
+  .grid2{ display:grid; grid-template-columns:1.1fr 1fr; gap:16px; }
+  .grid3{ display:grid; grid-template-columns:repeat(3,1fr); gap:16px; }
+  @media (max-width:900px){ .grid2, .grid3{ grid-template-columns:1fr; } }
+
+  .card{
+    background:var(--panel); border:1px solid var(--panel-border);
+    border-radius:10px; padding:18px 20px;
+  }
+  .card h3{ margin:0 0 12px; font-size:13px; color:var(--muted); font-weight:600; }
+  table{ width:100%; border-collapse:collapse; font-size:13px; }
+  td, th{ padding:6px 4px; text-align:left; }
+  th{ color:var(--muted); font-weight:600; border-bottom:1px solid var(--panel-border); }
+  tr:not(:last-child) td{ border-bottom:1px solid #1c2536; }
+  td.num{ text-align:right; font-variant-numeric:tabular-nums; }
+  canvas{ max-height:280px; }
+  .empty{ color:var(--muted); font-size:13px; padding:8px 0; }
+</style>
+</head>
+<body>
+  <h1>Domain &amp; Mailbox Ops Dashboard</h1>
+  <div class="subtitle">Generated 2026-09-01 09:53 &middot; 7587 mailboxes &middot; 2529 domains</div>
+
+  <div class="section-title">Domains vs. mailboxes &mdash; status comparison</div>
+  <div class="card">
+    <table id="compareTable"></table>
+  </div>
+
+  <div class="kpi-row" id="kpi-row"></div>
+
+  <div class="section-title">Domain status breakdown</div>
+  <div class="grid2">
+    <div class="card"><h3>Status distribution</h3><canvas id="domainStatusChart"></canvas></div>
+    <div class="card"><h3>Nameserver match status</h3><canvas id="nsChart"></canvas></div>
+  </div>
+
+  <div class="section-title">Mailbox status breakdown</div>
+  <div class="grid2">
+    <div class="card"><h3>Status distribution</h3><canvas id="mailboxStatusChart"></canvas></div>
+    <div class="card"><h3>Platform distribution</h3><canvas id="platformChart"></canvas></div>
+  </div>
+
+  <div class="section-title">Upcoming renewals (by month, on record)</div>
+  <div class="card"><canvas id="renewalsChart"></canvas></div>
+
+  <div class="section-title">Other distinct statuses</div>
+  <div class="grid3">
+    <div class="card"><h3>Domain &mdash; other statuses</h3><table id="domainOtherTable"></table></div>
+    <div class="card"><h3>Mailbox &mdash; other statuses</h3><table id="mailboxOtherTable"></table></div>
+    <div class="card"><h3>Mailbox renewal cycle</h3><table id="cycleTable"></table></div>
+  </div>
+  <div class="grid3" style="margin-top:16px;">
+    <div class="card"><h3>Mailbox DNS propagation</h3><table id="dnsTable"></table></div>
+    <div class="card"><h3>Mailbox sequencer status</h3><table id="seqTable"></table></div>
+    <div class="card"><h3>Domain nameserver match</h3><table id="nsTable"></table></div>
+  </div>
+
+<script>
+const REPORT = {"mailboxes": {"total": 7587, "active": 5700, "cancelled": 9, "scheduled_for_cancellation": 1221, "pending": 0, "other_total": 657, "other": {"renewal_failed": 657}, "renewals_upcoming": 4456, "renewals_by_month": {"2026-07": 9, "2026-08": 3122, "2026-09": 4456}, "platform": {"GOOGLE": 7584, "AZURE": 3}, "renewal_cycle": {"monthly": 7587}, "dns_propagation_status": {"na": 7587}, "sequencer_status": {"na": 7287, "exported": 300}}, "domains": {"total": 2529, "active": 2288, "cancelled": 0, "scheduled_for_cancellation": 0, "pending": 0, "other_total": 241, "other": {"scheduled_for_deletion": 241}, "renewals_upcoming": 0, "renewals_by_month": {"2027-06": 19, "2027-07": 2213, "2027-08": 274, "2028-07": 23}, "nameserver_match_status": {"matched": 2459, "pending": 70}}};
+
+const PALETTE = ['#3FBF7F','#E8B84B','#5C8DF6','#E15C5C','#7C6CE0','#3AB7C4','#C97BD9','#8C9BB5'];
+
+function colorFor(label){
+  const l = label.toLowerCase();
+  if(l.includes('active')) return '#3FBF7F';
+  if(l.includes('pending') || l.includes('queued')) return '#E8B84B';
+  if(l.includes('schedul')) return '#5C8DF6';
+  if(l.includes('cancel') || l.includes('expir')) return '#E15C5C';
+  return null;
+}
+
+function paletteFor(labels){
+  return labels.map((l,i)=> colorFor(l) || PALETTE[i % PALETTE.length]);
+}
+
+function donut(ctxId, dataObj, emptyMsg){
+  const labels = Object.keys(dataObj);
+  const ctx = document.getElementById(ctxId);
+  if(!labels.length){
+    ctx.replaceWith(Object.assign(document.createElement('div'), {className:'empty', textContent: emptyMsg || 'No data'}));
+    return;
+  }
+  new Chart(ctx, {
+    type: 'doughnut',
+    data: {
+      labels: labels,
+      datasets: [{ data: Object.values(dataObj), backgroundColor: paletteFor(labels), borderWidth: 0 }]
+    },
+    options: {
+      plugins: { legend: { position: 'right', labels: { color: '#E7ECF5', boxWidth: 12, font:{size:11} } } },
+      cutout: '62%'
+    }
+  });
+}
+
+function table(tableId, dataObj){
+  const el = document.getElementById(tableId);
+  const labels = Object.keys(dataObj);
+  if(!labels.length){ el.outerHTML = '<div class="empty">No data</div>'; return; }
+  let rows = '<tr><th>Status</th><th style="text-align:right">Count</th></tr>';
+  labels.forEach(l => { rows += `<tr><td>${l}</td><td class="num">${dataObj[l]}</td></tr>`; });
+  el.innerHTML = rows;
+}
+
+const D = REPORT.domains, M = REPORT.mailboxes;
+
+// Comparison table: domains vs mailboxes across the buckets that matter
+const compareRows = [
+  ['Active', D.active, M.active, 'active'],
+  ['Cancelled', D.cancelled, M.cancelled, 'cancelled'],
+  ['Scheduled for cancellation', D.scheduled_for_cancellation, M.scheduled_for_cancellation, 'scheduled'],
+  ['Pending', D.pending, M.pending, 'pending'],
+  ['Renewals upcoming (next 90 days)', D.renewals_upcoming, M.renewals_upcoming, ''],
+  ['Other statuses', D.other_total, M.other_total, ''],
+  ['Total', D.total, M.total, ''],
+];
+document.getElementById('compareTable').innerHTML =
+  '<tr><th>Status</th><th style="text-align:right">Domains</th><th style="text-align:right">Mailboxes</th></tr>' +
+  compareRows.map(([label, dCount, mCount, cls]) => {
+    const dot = cls ? `<span style="display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:8px;background:var(--${cls});"></span>` : '';
+    const bold = label === 'Total' ? 'font-weight:600;' : '';
+    return `<tr style="${bold}"><td>${dot}${label}</td><td class="num">${dCount}</td><td class="num">${mCount}</td></tr>`;
+  }).join('');
+
+// KPI row (combined totals across both entity types)
+const kpiRow = document.getElementById('kpi-row');
+const kpis = [
+  {cls:'active', num: D.active + M.active, lbl:'Active (domains + mailboxes)'},
+  {cls:'pending', num: D.pending + M.pending, lbl:'Pending'},
+  {cls:'scheduled', num: D.scheduled_for_cancellation + M.scheduled_for_cancellation, lbl:'Scheduled for cancellation'},
+  {cls:'cancelled', num: D.cancelled + M.cancelled, lbl:'Cancelled'},
+  {cls:'', num: D.total, lbl:'Total domains'},
+  {cls:'', num: M.total, lbl:'Total mailboxes'},
+];
+kpiRow.innerHTML = kpis.map(k => `<div class="kpi ${k.cls}"><div class="num">${k.num}</div><div class="lbl">${k.lbl}</div></div>`).join('');
+
+// Full status distributions for the donut charts (reconstructed from buckets + 'other')
+function fullStatusDist(entity){
+  const dist = {};
+  if(entity.active) dist['active'] = entity.active;
+  if(entity.pending) dist['pending'] = entity.pending;
+  if(entity.scheduled_for_cancellation) dist['scheduled_for_cancellation'] = entity.scheduled_for_cancellation;
+  if(entity.cancelled) dist['cancelled'] = entity.cancelled;
+  Object.entries(entity.other).forEach(([k,v]) => dist[k] = v);
+  return dist;
+}
+
+donut('domainStatusChart', fullStatusDist(D));
+donut('nsChart', D.nameserver_match_status);
+donut('mailboxStatusChart', fullStatusDist(M));
+donut('platformChart', M.platform);
+
+// Renewals bar chart (combine domain + mailbox renewal months)
+const months = Array.from(new Set([
+  ...Object.keys(D.renewals_by_month),
+  ...Object.keys(M.renewals_by_month)
+])).sort();
+const rCtx = document.getElementById('renewalsChart');
+if(!months.length){
+  rCtx.replaceWith(Object.assign(document.createElement('div'), {className:'empty', textContent:'No renewal dates on record'}));
+} else {
+  new Chart(rCtx, {
+    type: 'bar',
+    data: {
+      labels: months,
+      datasets: [
+        { label:'Domains', data: months.map(m => D.renewals_by_month[m]||0), backgroundColor:'#5C8DF6' },
+        { label:'Mailboxes', data: months.map(m => M.renewals_by_month[m]||0), backgroundColor:'#3FBF7F' }
+      ]
+    },
+    options: {
+      plugins:{ legend:{ labels:{ color:'#E7ECF5' } } },
+      scales:{
+        x:{ ticks:{ color:'#8C9BB5' }, grid:{ color:'#1c2536' } },
+        y:{ ticks:{ color:'#8C9BB5' }, grid:{ color:'#1c2536' }, beginAtZero:true }
+      }
+    }
+  });
+}
+
+table('domainOtherTable', D.other);
+table('mailboxOtherTable', M.other);
+table('dnsTable', M.dns_propagation_status);
+table('seqTable', M.sequencer_status);
+table('cycleTable', M.renewal_cycle);
+table('nsTable', D.nameserver_match_status);
+</script>
+</body>
+</html>
