@@ -69,7 +69,7 @@
 </head>
 <body>
   <h1>Domain &amp; Mailbox Ops Dashboard</h1>
-  <div class="subtitle">Generated 2026-09-01 09:53 &middot; 7587 mailboxes &middot; 2529 domains</div>
+  <div class="subtitle">Generated 2026-09-01 09:57 &middot; 7587 mailboxes &middot; 2529 domains</div>
 
   <div class="section-title">Domains vs. mailboxes &mdash; status comparison</div>
   <div class="card">
@@ -161,7 +161,7 @@ const compareRows = [
   ['Scheduled for cancellation', D.scheduled_for_cancellation, M.scheduled_for_cancellation, 'scheduled'],
   ['Pending', D.pending, M.pending, 'pending'],
   ['Renewals upcoming (next 90 days)', D.renewals_upcoming, M.renewals_upcoming, ''],
-  ['Other statuses', D.other_total, M.other_total, ''],
+  ['Domain schedule for deletion / Mailboxes renewal Failed', D.other_total, M.other_total, ''],
   ['Total', D.total, M.total, ''],
 ];
 document.getElementById('compareTable').innerHTML =
